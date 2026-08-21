@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { defaultIsContentTypeBinary } from "hono/aws-lambda";
 
 const photoRouter = new Hono();
 

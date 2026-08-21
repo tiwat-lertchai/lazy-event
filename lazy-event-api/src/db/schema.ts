@@ -1,11 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  pgEnum,
-  uuid,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, pgEnum, uuid } from "drizzle-orm/pg-core";
 
 export const queueStatusEnum = pgEnum("queue_status", [
   "pending",
@@ -14,13 +7,16 @@ export const queueStatusEnum = pgEnum("queue_status", [
   "failed",
 ]);
 
-export const paperSizeEnum = pgEnum("paper_size", ["4x6", "polaroid_3x3"]);
+export const paperSizeEnum = pgEnum("paper_size", [
+  "4x6",
+  "polaroid_3x3",
+]);
 
 // One record per uploaded original file
 export const photos = pgTable("photos", {
   id: uuid("id").defaultRandom().primaryKey(),
   lineUserId: text("line_user_id").notNull(),
-  imageUrl: text("image_url").notNull(), // R2/S3 URL of the uploaded original
+  imageUrl: text("image_url").notNull(), // Public URL served from local disk storage
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -36,6 +32,14 @@ export const printJobs = pgTable("print_jobs", {
   status: queueStatusEnum("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Congrats/send-off messages displayed on screen at the event
+export const advices = pgTable("advices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  lineUserId: text("line_user_id").notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const admins = pgTable("admins", {

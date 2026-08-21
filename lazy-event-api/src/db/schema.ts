@@ -1,4 +1,11 @@
-import { pgTable, text, timestamp, pgEnum, uuid } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  pgEnum,
+  uuid,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 export const queueStatusEnum = pgEnum("queue_status", [
   "pending",
@@ -7,10 +14,25 @@ export const queueStatusEnum = pgEnum("queue_status", [
   "failed",
 ]);
 
-export const photoQueue = pgTable("photo_queue", {
+export const paperSizeEnum = pgEnum("paper_size", ["4x6", "polaroid_3x3"]);
+
+// One record per uploaded original file
+export const photos = pgTable("photos", {
   id: uuid("id").defaultRandom().primaryKey(),
   lineUserId: text("line_user_id").notNull(),
   imageUrl: text("image_url").notNull(), // R2/S3 URL of the uploaded original
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// One record per print job. A single photo can spawn multiple
+// print jobs (e.g. one 4x6 + one polaroid_3x3), each tracked separately.
+export const printJobs = pgTable("print_jobs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  photoId: uuid("photo_id")
+    .notNull()
+    .references(() => photos.id, { onDelete: "cascade" }),
+  lineUserId: text("line_user_id").notNull(), // Denormalized for faster "my queue" lookups
+  paperSize: paperSizeEnum("paper_size").notNull(),
   status: queueStatusEnum("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

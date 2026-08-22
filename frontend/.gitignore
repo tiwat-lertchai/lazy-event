@@ -28,6 +28,11 @@ coverage
 
 .eslintcache
 
+# Environment
+.prod.*
+.dev.*
+.env
+
 # Cypress
 /cypress/videos/
 /cypress/screenshots/

@@ -7,6 +7,32 @@ import { requireAdmin } from "../middlewares/requireAdmin";
 
 const adviceRouter = new Hono();
 
+const MAX_MESSAGE_LENGTH = 500;
+
+adviceRouter.post("/", requireUser, async (c) => {
+  const lineUserId = c.var.lineUserId;
+  const { message } = await c.req.json<{ message: string }>();
+
+  // Checking message content before writing to database
+  if (typeof message !== "string" || message.trim().length === 0) {
+    return c.json({ error: "Message Error, message must not be empty" }, 400);
+  }
+
+  if (message.length > MAX_MESSAGE_LENGTH) {
+    return c.json(
+      { error: `Message Error, message must be under ${MAX_MESSAGE_LENGTH} characters` },
+      400,
+    );
+  }
+
+  const [created] = await db
+    .insert(advices)
+    .values({ lineUserId, message: message.trim() })
+    .returning();
+
+  return c.json({ message: created }, 201);
+});
+
 adviceRouter.get("/", async (c) => {
   const messages = await db
     .select()

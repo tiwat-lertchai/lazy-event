@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, pgEnum, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, pgEnum, uuid, integer } from "drizzle-orm/pg-core";
 
 export const queueStatusEnum = pgEnum("queue_status", [
   "pending",
@@ -29,6 +29,8 @@ export const printJobs = pgTable("print_jobs", {
     .references(() => photos.id, { onDelete: "cascade" }),
   lineUserId: text("line_user_id").notNull(), // Denormalized for faster "my queue" lookups
   paperSize: paperSizeEnum("paper_size").notNull(),
+  quantity: integer("quantity").notNull().default(1), // Copies of this photo at this paper size, e.g. 1/3/6/12
+  priceBaht: integer("price_baht").notNull(), // Snapshot of the tier price at time of order, in whole baht
   status: queueStatusEnum("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

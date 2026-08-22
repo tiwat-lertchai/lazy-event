@@ -1,37 +1,63 @@
 import { Hono } from "hono";
-import { eq, and, asc, inArray } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "../db/client";
 import { photos, printJobs } from "../db/schema";
 import { requireUser } from "../middlewares/requireUser";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { canTransition, type QueueStatus } from "../domain/photoQueue/stateMachine";
+import { getPriceForQuantity, ALLOWED_QUANTITIES } from "../domain/pricing/tiers";
 import { sendMessage } from "../shared/providers/line/messaging/client";
 import { uploadPhoto, InvalidUploadError } from "../shared/storage/local";
 
 type PaperSize = "4x6" | "polaroid_3x3";
 const VALID_PAPER_SIZES: PaperSize[] = ["4x6", "polaroid_3x3"];
 
+interface UploadItem {
+  paperSize: PaperSize;
+  quantity: number;
+}
+
 const photoRouter = new Hono();
 
-// --- Upload (creates a photo + one print job per requested paper size) ---
+// --- Upload (creates a photo + one print job per requested paperSize+quantity item) ---
 
 photoRouter.post("/photos", requireUser, async (c) => {
   const lineUserId = c.var.lineUserId;
-  const body = await c.req.parseBody({ all: true });
+  const body = await c.req.parseBody();
 
   const file = body["file"];
   if (!(file instanceof File)) {
     return c.json({ error: "Missing file" }, 400);
   }
 
-  // paperSizes can arrive as a single value or multiple, e.g. "4x6" or ["4x6","polaroid_3x3"]
-  const rawSizes = body["paperSizes"];
-  const paperSizes = (Array.isArray(rawSizes) ? rawSizes : [rawSizes]).filter(
-    (s): s is PaperSize => typeof s === "string" && VALID_PAPER_SIZES.includes(s as PaperSize),
-  );
+  // "items" arrives as a JSON string, e.g. '[{"paperSize":"4x6","quantity":6}]'
+  const rawItems = body["items"];
+  if (typeof rawItems !== "string") {
+    return c.json({ error: "Missing items" }, 400);
+  }
 
-  if (paperSizes.length === 0) {
-    return c.json({ error: "At least one valid paperSize is required (4x6, polaroid_3x3)" }, 400);
+  let parsedItems: UploadItem[];
+  try {
+    parsedItems = JSON.parse(rawItems);
+  } catch {
+    return c.json({ error: "Items Error, items must be valid JSON" }, 400);
+  }
+
+  if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+    return c.json({ error: "At least one print item is required" }, 400);
+  }
+
+  // Checking every item has a valid paperSize and an allowed quantity tier
+  for (const item of parsedItems) {
+    if (!VALID_PAPER_SIZES.includes(item.paperSize)) {
+      return c.json({ error: `Invalid paperSize: ${item.paperSize}` }, 400);
+    }
+    if (!ALLOWED_QUANTITIES.includes(item.quantity)) {
+      return c.json(
+        { error: `Invalid quantity: ${item.quantity}, allowed: ${ALLOWED_QUANTITIES.join(", ")}` },
+        400,
+      );
+    }
   }
 
   let imageUrl: string;
@@ -49,15 +75,16 @@ photoRouter.post("/photos", requireUser, async (c) => {
     .values({ lineUserId, imageUrl })
     .returning();
 
-  // One print job per requested size, dedup in case of duplicates in the request
-  const uniqueSizes = [...new Set(paperSizes)];
+  // One print job per item, price is looked up server-side, never trust a price from the client
   const jobs = await db
     .insert(printJobs)
     .values(
-      uniqueSizes.map((paperSize) => ({
+      parsedItems.map((item) => ({
         photoId: photo.id,
         lineUserId,
-        paperSize,
+        paperSize: item.paperSize,
+        quantity: item.quantity,
+        priceBaht: getPriceForQuantity(item.quantity)!, // Already validated above
       })),
     )
     .returning();
@@ -76,6 +103,8 @@ photoRouter.get("/queues", requireUser, async (c) => {
       photoId: printJobs.photoId,
       imageUrl: photos.imageUrl,
       paperSize: printJobs.paperSize,
+      quantity: printJobs.quantity,
+      priceBaht: printJobs.priceBaht,
       status: printJobs.status,
       createdAt: printJobs.createdAt,
       updatedAt: printJobs.updatedAt,
@@ -98,6 +127,8 @@ photoRouter.get("/queues/:id", requireUser, async (c) => {
       photoId: printJobs.photoId,
       imageUrl: photos.imageUrl,
       paperSize: printJobs.paperSize,
+      quantity: printJobs.quantity,
+      priceBaht: printJobs.priceBaht,
       status: printJobs.status,
       lineUserId: printJobs.lineUserId,
       createdAt: printJobs.createdAt,
@@ -131,6 +162,8 @@ photoRouter.get("/admin/queues", requireUser, requireAdmin, async (c) => {
       photoId: printJobs.photoId,
       imageUrl: photos.imageUrl,
       paperSize: printJobs.paperSize,
+      quantity: printJobs.quantity,
+      priceBaht: printJobs.priceBaht,
       status: printJobs.status,
       lineUserId: printJobs.lineUserId,
       createdAt: printJobs.createdAt,

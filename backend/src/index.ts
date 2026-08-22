@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
 import adviceRouter from "./routes/advices";
 import photoRouter from "./routes/photos";
+import webhookRouter from "./routes/webhook";
 
 // Applications Router Files
 const app = new Hono();
@@ -30,7 +31,8 @@ app.get("/", (c) => {
   return c.json({ msg: "Hello, LazyEvent" });
 });
 
-app.route("/advices", adviceRouter);
-app.route("/photos", photoRouter);
+app.route("/api/advices", adviceRouter);
+app.route("/api/photos", photoRouter);
+app.route("/webhook", webhookRouter);
 
 export default app;

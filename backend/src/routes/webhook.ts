@@ -4,9 +4,9 @@ import {
   verifySignature,
 } from "../shared/providers/line/messaging/client";
 
-const webhookRouters = new Hono();
+const webhookRouter = new Hono();
 
-webhookRouters.post("/", async (c) => {
+webhookRouter.post("/", async (c) => {
   const signature = c.req.header("x-line-signature");
   const rawBody = await c.req.text();
 
@@ -27,4 +27,4 @@ webhookRouters.post("/", async (c) => {
   return c.text("OK", 200);
 });
 
-export default webhookRouters;
+export default webhookRouter;

@@ -15,11 +15,17 @@ export function usePhotoUpload() {
   const isUploading = ref(false);
   const uploadError = ref<string | null>(null);
 
-  async function uploadPhoto(file: File, items: UploadItem[]) {
+  async function uploadPhotos(files: File[], items: UploadItem[]) {
     // Checking Access Token before doing anything else
     if (!accessToken.value) {
       uploadError.value =
         "Access Token Error, Please check LIFF login state or Access Token isn't found";
+      return null;
+    }
+
+    // Checking files selected by user
+    if (files.length === 0) {
+      uploadError.value = "File Error, Please select at least one photo";
       return null;
     }
 
@@ -40,7 +46,8 @@ export function usePhotoUpload() {
     uploadError.value = null;
 
     const formData = new FormData();
-    formData.append("file", file);
+    // Same field name "file" repeated once per photo, backend reads this as an array
+    files.forEach((file) => formData.append("file", file));
     formData.append("items", JSON.stringify(items));
 
     try {
@@ -64,5 +71,5 @@ export function usePhotoUpload() {
     }
   }
 
-  return { isUploading, uploadError, uploadPhoto };
+  return { isUploading, uploadError, uploadPhotos };
 }

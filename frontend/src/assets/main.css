@@ -1,35 +1,253 @@
-@import './base.css';
+@import "./base.css";
 
 #app {
-  max-width: 1280px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+  padding: 1.5rem 1rem 3rem;
 }
 
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+/* --- nav (top bar for the 4 pages: upload / queue / board / admin) --- */
+
+.app__nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: var(--section-gap);
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
+.app__nav a {
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  color: var(--color-text);
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
+.app__nav a:hover {
+  background: var(--color-background-soft);
+  color: var(--color-primary);
+}
 
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+.app__nav a.router-link-exact-active {
+  background: var(--color-primary);
+  color: var(--white);
+}
+
+/* --- generic form controls, used across upload / admin / board views --- */
+
+input[type="file"],
+input[type="text"],
+textarea,
+select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+label {
+  display: block;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+label > input,
+label > select,
+label > textarea {
+  margin-top: 0.35rem;
+}
+
+button {
+  padding: 0.65rem 1.25rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: var(--white);
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- cards / lists shared by queue, admin table, advice board --- */
+
+.upload-view,
+.queue-status,
+.admin-queue,
+.advice-board {
+  background: var(--color-background);
+}
+
+.upload-view h1,
+.queue-status h1,
+.admin-queue h1,
+.advice-board h1 {
+  margin-bottom: var(--section-gap);
+  font-size: 1.4rem;
+}
+
+.upload-view__options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.upload-view__previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 1rem 0;
+}
+
+.upload-view__previews li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.upload-view__previews img {
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+}
+
+.upload-view__previews button {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  background: var(--color-danger);
+}
+
+.upload-view__previews button:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.queue-status__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.queue-status ul,
+.advice-board__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.queue-status li,
+.advice-board li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-background-soft);
+}
+
+.queue-status li img {
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.advice-board li {
+  flex-direction: column;
+  align-items: flex-start;
+  background: var(--color-background);
+}
+
+.advice-board li p {
+  color: var(--color-text);
+}
+
+.advice-board form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: var(--section-gap);
+}
+
+/* --- admin table --- */
+
+.admin-queue table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.admin-queue th {
+  text-align: left;
+  padding: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.admin-queue td {
+  padding: 0.6rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+
+.admin-queue td img {
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+/* --- error / status text --- */
+
+.upload-view__error,
+.admin-queue__error,
+.advice-board__error {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius);
+  background: #fef2f2;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 480px) {
+  .upload-view__options {
+    grid-template-columns: 1fr;
   }
 }

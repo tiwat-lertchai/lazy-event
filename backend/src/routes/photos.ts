@@ -23,14 +23,19 @@ const photoRouter = new Hono();
 
 photoRouter.post("/photos", requireUser, async (c) => {
   const lineUserId = c.var.lineUserId;
-  const body = await c.req.parseBody();
+  const body = await c.req.parseBody({ all: true });
 
-  const file = body["file"];
-  if (!(file instanceof File)) {
+  // "file" can be a single File or an array of Files depending on how many were selected
+  const rawFiles = body["file"];
+  const files = Array.isArray(rawFiles) ? rawFiles : [rawFiles];
+  const validFiles = files.filter((f): f is File => f instanceof File);
+
+  if (validFiles.length === 0) {
     return c.json({ error: "Missing file" }, 400);
   }
 
   // "items" arrives as a JSON string, e.g. '[{"paperSize":"4x6","quantity":6}]'
+  // Same items apply to every file in this batch, keeps the upload form simple.
   const rawItems = body["items"];
   if (typeof rawItems !== "string") {
     return c.json({ error: "Missing items" }, 400);
@@ -60,9 +65,11 @@ photoRouter.post("/photos", requireUser, async (c) => {
     }
   }
 
-  let imageUrl: string;
+  // Upload every file first, fail the whole request if any single one is invalid
+  // rather than leaving a half-created batch in the database.
+  let imageUrls: string[];
   try {
-    imageUrl = await uploadPhoto(file, lineUserId);
+    imageUrls = await Promise.all(validFiles.map((file) => uploadPhoto(file, lineUserId)));
   } catch (err) {
     if (err instanceof InvalidUploadError) {
       return c.json({ error: err.message }, 400);
@@ -70,26 +77,32 @@ photoRouter.post("/photos", requireUser, async (c) => {
     throw err;
   }
 
-  const [photo] = await db
-    .insert(photos)
-    .values({ lineUserId, imageUrl })
-    .returning();
+  // One photo + one set of print jobs per file, all sharing the same items
+  const results = [];
+  for (const imageUrl of imageUrls) {
+    const [photo] = await db
+      .insert(photos)
+      .values({ lineUserId, imageUrl })
+      .returning();
 
-  // One print job per item, price is looked up server-side, never trust a price from the client
-  const jobs = await db
-    .insert(printJobs)
-    .values(
-      parsedItems.map((item) => ({
-        photoId: photo.id,
-        lineUserId,
-        paperSize: item.paperSize,
-        quantity: item.quantity,
-        priceBaht: getPriceForQuantity(item.quantity)!, // Already validated above
-      })),
-    )
-    .returning();
+    // Price is looked up server-side, never trust a price from the client
+    const jobs = await db
+      .insert(printJobs)
+      .values(
+        parsedItems.map((item) => ({
+          photoId: photo.id,
+          lineUserId,
+          paperSize: item.paperSize,
+          quantity: item.quantity,
+          priceBaht: getPriceForQuantity(item.quantity)!, // Already validated above
+        })),
+      )
+      .returning();
 
-  return c.json({ photo, jobs }, 201);
+    results.push({ photo, jobs });
+  }
+
+  return c.json({ results }, 201);
 });
 
 // --- User routes (own queue only) ---

@@ -21,7 +21,7 @@ const photoRouter = new Hono();
 
 // --- Upload (creates a photo + one print job per requested paperSize+quantity item) ---
 
-photoRouter.post("/photos", requireUser, async (c) => {
+photoRouter.post("/", requireUser, async (c) => {
   const lineUserId = c.var.lineUserId;
   const body = await c.req.parseBody({ all: true });
 

@@ -4,15 +4,19 @@ import path from "path";
 
 // Directory on the server's own disk where uploaded photos are saved.
 // Make sure this path is persisted (not wiped on redeploy) if not using a volume.
-const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), "uploads", "photos");
+const UPLOAD_SUBPATH = process.env.UPLOAD_SUBPATH ?? "uploads/photos";
+const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), UPLOAD_SUBPATH);
 
-// Public base URL this server serves the uploads directory from,
-// e.g. mounted via Hono's serveStatic at "/uploads" -> "https://api.yourdomain.com/uploads"
-const publicUrlBase = process.env.UPLOAD_PUBLIC_URL!;
+// Public base URL this server is reachable at, e.g. "https://events.snowy.page"
+// The "/uploads/photos" part is appended automatically below — it must match
+// UPLOAD_SUBPATH exactly, since that's what serveStatic actually serves on disk.
+const publicOrigin = process.env.UPLOAD_PUBLIC_ORIGIN!;
 
-if (!publicUrlBase) {
-  throw new Error("UPLOAD_PUBLIC_URL Error, Please check env config or UPLOAD_PUBLIC_URL isn't found");
+if (!publicOrigin) {
+  throw new Error("UPLOAD_PUBLIC_ORIGIN Error, Please check env config or UPLOAD_PUBLIC_ORIGIN isn't found");
 }
+
+const publicUrlBase = `${publicOrigin}/${UPLOAD_SUBPATH}`;
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png"];
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB, original resolution for print

@@ -22,12 +22,14 @@ export function useAdminQueues() {
     isLoading.value = true;
 
     try {
-      const url = new URL(`${API_BASE}/photos/admin/queues`);
+      // Plain string building instead of `new URL()` — avoids edge cases across
+      // browsers (including LINE's in-app browser) when API_BASE is a relative path.
+      let path = `${API_BASE}/photos/admin/queues`;
       if (statusFilter) {
-        url.searchParams.set("status", statusFilter);
+        path += `?${new URLSearchParams({ status: statusFilter }).toString()}`;
       }
 
-      const res = await fetch(url, {
+      const res = await fetch(path, {
         headers: { Authorization: `Bearer ${accessToken.value}` },
       });
 

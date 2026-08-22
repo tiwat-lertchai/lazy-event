@@ -27,7 +27,7 @@ app.use(
 app.use("/uploads/*", serveStatic({ root: "./" }));
 
 // Application Routers
-app.get("/", (c) => {
+app.get("/api", (c) => {
   return c.json({ msg: "Hello, LazyEvent" });
 });
 
